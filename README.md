@@ -3,6 +3,7 @@
 **Module :** TI503N – Bases de données 1 : Concepts de base (EFREI)
 **Binôme :** Dilipkumar Niroshan et Vigarnan Harisram
 **Partie 1 :** analyse des besoins et MCD (rendu du 16/10/2026)
+**Partie 2 :** MLD, MPD, insertion des données et interrogation (rendu du 09/11/2026)
 
 ---
 
@@ -12,20 +13,29 @@ Ce projet applique la méthode MERISE à la conception d'une base de données po
 
 La base couvre l'aspect sportif du championnat : les saisons et leurs journées, les clubs et leurs stades, les joueurs et la composition des effectifs à chaque saison, les entraîneurs, les arbitres, les matchs, les buts et les cartons. Les transferts, les salaires, la billetterie, les droits TV et les sanctions administratives sont hors périmètre.
 
-La partie 1 correspond aux étapes 1 (analyse des besoins) et 2 (MCD) du projet.
+La partie 1 correspond aux étapes 1 (analyse des besoins) et 2 (MCD) du projet, la partie 2 aux étapes 3 (MLD et MPD), 4 (insertion des données) et 5 (interrogation).
+
+Les scripts SQL sont écrits pour MySQL 8.0.16 ou plus récent et s'exécutent dans l'ordre de leur numéro.
 
 ## 2. Organisation du dépôt
 
 ```
 .
 ├── README.md                      Documentation du projet
+├── 1_creation.sql                 MPD : création des tables et contraintes d'intégrité
+├── 2_contraintes.sql              Contraintes de validation (CHECK, UNIQUE, triggers)
+├── 3_insertion.sql                Données générées par l'IA
+├── 4_interrogation.sql            Requêtes du scénario d'utilisation
 ├── prompts/
-│   └── prompt_iteration_3.txt     Prompt final soumis à l'IA
+│   ├── prompt_iteration_3.txt     Prompt final de l'analyse des besoins
+│   └── prompt_insertion.txt       Prompt de génération des données
 ├── reponses_ia/
 │   └── reponse_iteration_3.md     Réponse brute de l'IA au prompt final
-└── mcd/
-    ├── mcd_ligue_football.loo     Fichier source du MCD (Looping)
-    └── mcd_ligue_football.png     Image du MCD exportée depuis Looping
+├── mcd/
+│   ├── mcd_ligue_football.loo     Fichier source du MCD (Looping)
+│   └── mcd_ligue_football.png     Image du MCD exportée depuis Looping
+└── mld/
+    └── mld_ligue_football.jpeg    MLD généré avec Looping
 ```
 
 ---
@@ -290,6 +300,8 @@ Les attributs sont suffixés par le nom de leur entité (nom_joueur, nom_arbitre
 
 « MATCH » est un mot réservé en MySQL. Si ce SGBD est retenu pour la partie 2, l'entité pourra être renommée RENCONTRE lors du passage au MLD.
 
+*Mise à jour partie 2 :* MySQL a été retenu. Lors de la génération du MLD, Looping a nommé la relation Match_ et a introduit des accents dans trois noms (numero_journée, prénom_entraineur, numero_affiliation_extérieur). Ces noms ont été conservés dans le MPD pour rester identiques au MLD (voir section 5.1).
+
 ---
 
 ## 5. Étape 3 : MLD et MPD
@@ -421,6 +433,152 @@ Le prompt a été soumis une seule fois, dans une conversation neuve. Le script 
 - joueurs : 38 nationalités, âges de 17 à 35 ans, aucun doublon de nom.
 
 **Limite relevée.** Le match reporté conserve sa date initiale (2026-10-03). La règle de gestion indique seulement qu'il reste rattaché à sa journée : la date pourra être mise à jour lorsque le match sera reprogrammé.
+
+---
+
+## 7. Étape 5 : interrogation de la base
+
+### 7.1 Scénario d'utilisation
+
+**Utilisateur :** un analyste de la direction des compétitions de la Ligue. Il ne saisit pas les données, qui sont enregistrées par les délégués de match après chaque rencontre : il les consulte.
+
+**Contexte :** nous sommes début novembre 2026. La saison 2025-2026 est terminée, la saison 2026-2027 en est à sa quatrième journée. L'analyste a deux missions :
+1. rédiger le **bilan sportif de la saison 2025-2026** pour le rapport annuel de la Ligue (classement, buteurs, discipline, arbitrage) ;
+2. préparer le **suivi de la saison 2026-2027** pour la commission d'organisation des compétitions : calendrier restant, désignation des arbitres, effectifs et changements de club.
+
+**Données à extraire** (le numéro renvoie à la requête de `4_interrogation.sql`) :
+
+| Besoin | Requête |
+|---|---|
+| **Bilan 2025-2026** | |
+| Classement final (points, victoires, nuls, défaites, différence de buts) | 2.7 |
+| Classement des buteurs, avec le nombre de penaltys | 2.3 |
+| Buteurs au-dessus de la moyenne de la saison | 4.8 |
+| Répartition des buts par type et moyenne de buts par match | 2.2, 2.6 |
+| Buts décisifs marqués en fin de match | 1.5 |
+| Prix du fair-play : joueurs sans aucun carton | 4.3 |
+| Bilan disciplinaire et liste des joueurs exclus | 2.4, 3.7 |
+| Bilan d'un club : buts de chaque joueur du Paris Saint-Germain | 3.5 |
+| Club qui ne participe plus au championnat | 4.1 |
+| **Suivi 2026-2027** | |
+| Calendrier restant (matchs programmés et reportés) | 1.1 |
+| Affiches de la prochaine journée, avec stade et arbitre désigné | 3.2 |
+| Arbitres de catégorie fédérale disponibles, charge de chaque arbitre | 1.4, 2.1 |
+| Arbitres ayant déjà exclu un joueur | 4.4 |
+| Entraîneurs principaux et effectif d'un club | 3.1, 3.3 |
+| Joueurs ayant changé de club depuis la saison précédente | 3.6 |
+| Âge des effectifs, joueur le plus âgé, jeunes espoirs | 2.5, 4.5, 1.3 |
+| Nationalités représentées | 1.2 |
+| Utilisation des stades, plus grand stade d'un club participant | 3.4, 4.6, 1.6 |
+| Joueurs ayant marqué sous l'arbitrage d'un arbitre international | 4.7, 4.2 |
+
+**Couverture des types de requêtes :**
+- projections et sélections : 1.1 à 1.6 (ORDER BY, DISTINCT, LIKE, IN, BETWEEN) ;
+- agrégations : 2.1 à 2.7 (COUNT, SUM, AVG, MIN, MAX, GROUP BY, HAVING) ;
+- jointures : 3.1 à 3.7 (internes, externes gauches, multiples, auto-jointure) ;
+- requêtes imbriquées : 4.1 à 4.8 (IN, NOT IN, EXISTS, NOT EXISTS, ALL, ANY, sous-requête dans le FROM).
+
+### 7.2 Étude des plans d'exécution
+
+**Requête étudiée (3.7) :** les joueurs exclus (carton rouge), avec la date du match.
+
+```sql
+SELECT J.nom_joueur, J.prenom_joueur, M.date_match
+FROM Carton C
+JOIN Joueur J ON J.numero_licence_joueur = C.numero_licence_joueur
+JOIN Match_ M ON M.numero_match = C.numero_match
+WHERE C.couleur_carton = 'rouge';
+```
+
+Elle utilise trois opérateurs différents de l'algèbre relationnelle : la sélection (σ), la jointure (⋈) et la projection (π).
+
+π <sub>nom_joueur, prenom_joueur, date_match</sub> ( σ <sub>couleur_carton = 'rouge'</sub> ( Carton ⋈ Joueur ⋈ Match_ ) )
+
+**Tailles des relations** (données de `3_insertion.sql`) : Carton 145 lignes, Joueur 111 lignes, Match_ 60 lignes, dont 9 cartons rouges. Chaque carton correspond à un seul joueur et à un seul match : une jointure de Carton avec Joueur ou Match_ conserve donc le nombre de lignes de Carton.
+
+**Hypothèses de calcul :**
+- une sélection ou une projection examine chaque ligne de son entrée une fois : coût = nombre de lignes en entrée ;
+- une jointure compare chaque ligne de la première relation à chaque ligne de la seconde (boucles imbriquées) : coût = produit des nombres de lignes.
+
+#### Plan 1 : jointures d'abord, sélection ensuite
+
+```mermaid
+graph TD
+    P["π nom_joueur, prenom_joueur, date_match<br/>9 lignes"] --> S["σ couleur_carton = 'rouge'<br/>9 lignes"]
+    S --> J2["⋈ Carton.numero_match = Match_.numero_match<br/>145 lignes"]
+    J2 --> J1["⋈ Carton.numero_licence_joueur = Joueur.numero_licence_joueur<br/>145 lignes"]
+    J2 --> M["Match_<br/>60 lignes"]
+    J1 --> C["Carton<br/>145 lignes"]
+    J1 --> J["Joueur<br/>111 lignes"]
+```
+
+| Étape | Opération | Calcul | Instructions | Lignes obtenues |
+|---|---|---|---|---|
+| 1 | Carton ⋈ Joueur | 145 × 111 | 16 095 | 145 |
+| 2 | résultat ⋈ Match_ | 145 × 60 | 8 700 | 145 |
+| 3 | σ couleur_carton = 'rouge' | 145 | 145 | 9 |
+| 4 | π | 9 | 9 | 9 |
+| | **Total** | | **24 949** | |
+
+#### Plan 2 : sélection d'abord, jointures ensuite
+
+```mermaid
+graph TD
+    P["π nom_joueur, prenom_joueur, date_match<br/>9 lignes"] --> J2["⋈ Carton.numero_match = Match_.numero_match<br/>9 lignes"]
+    J2 --> J1["⋈ Carton.numero_licence_joueur = Joueur.numero_licence_joueur<br/>9 lignes"]
+    J2 --> M["Match_<br/>60 lignes"]
+    J1 --> S["σ couleur_carton = 'rouge'<br/>9 lignes"]
+    J1 --> J["Joueur<br/>111 lignes"]
+    S --> C["Carton<br/>145 lignes"]
+```
+
+| Étape | Opération | Calcul | Instructions | Lignes obtenues |
+|---|---|---|---|---|
+| 1 | σ couleur_carton = 'rouge' sur Carton | 145 | 145 | 9 |
+| 2 | résultat ⋈ Joueur | 9 × 111 | 999 | 9 |
+| 3 | résultat ⋈ Match_ | 9 × 60 | 540 | 9 |
+| 4 | π | 9 | 9 | 9 |
+| | **Total** | | **1 693** | |
+
+#### Plan 3 : sélection et projections d'abord
+
+On applique la sélection sur Carton, et on projette Joueur et Match_ sur les seules colonnes utiles (clé de jointure et colonnes affichées) avant les jointures.
+
+```mermaid
+graph TD
+    P["π nom_joueur, prenom_joueur, date_match<br/>9 lignes"] --> J2["⋈ numero_match<br/>9 lignes"]
+    J2 --> J1["⋈ numero_licence_joueur<br/>9 lignes"]
+    J2 --> PM["π numero_match, date_match<br/>60 lignes"]
+    PM --> M["Match_<br/>60 lignes"]
+    J1 --> S["σ couleur_carton = 'rouge'<br/>9 lignes"]
+    J1 --> PJ["π numero_licence_joueur, nom_joueur, prenom_joueur<br/>111 lignes"]
+    S --> C["Carton<br/>145 lignes"]
+    PJ --> J["Joueur<br/>111 lignes"]
+```
+
+| Étape | Opération | Calcul | Instructions | Lignes obtenues |
+|---|---|---|---|---|
+| 1 | σ couleur_carton = 'rouge' sur Carton | 145 | 145 | 9 |
+| 2 | π sur Joueur | 111 | 111 | 111 |
+| 3 | π sur Match_ | 60 | 60 | 60 |
+| 4 | ⋈ avec Joueur | 9 × 111 | 999 | 9 |
+| 5 | ⋈ avec Match_ | 9 × 60 | 540 | 9 |
+| 6 | π finale | 9 | 9 | 9 |
+| | **Total** | | **1 864** | |
+
+#### Conclusion
+
+| Plan | Instructions |
+|---|---|
+| 1 : jointures puis sélection | 24 949 |
+| 2 : sélection puis jointures | **1 693** |
+| 3 : sélection et projections puis jointures | 1 864 |
+
+Le **plan 2** est le plus efficace : il exécute environ 15 fois moins d'instructions que le plan 1. Appliquer la sélection le plus tôt possible réduit Carton de 145 à 9 lignes avant les jointures, qui sont les opérations les plus coûteuses (leur coût est un produit de tailles).
+
+Le plan 3 coûte un peu plus en nombre d'instructions, car les projections sur Joueur et Match_ parcourent ces tables sans réduire leur nombre de lignes. Il manipule en revanche des lignes plus petites, ce qui réduit la mémoire utilisée : l'intérêt de descendre les projections apparaît surtout sur des tables avec beaucoup de colonnes.
+
+L'ordre des deux jointures n'a pas d'influence ici : après la sélection, chaque jointure produit 9 lignes, et on obtient 9 × 111 + 9 × 60 = 1 539 comparaisons dans les deux cas.
 
 ---
 
