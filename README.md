@@ -361,6 +361,69 @@ Deux règles ne sont pas vérifiées automatiquement, car elles ne peuvent être
 
 ---
 
+## 6. Étape 4 : insertion des données
+
+### 6.1 Construction du prompt
+
+Le prompt (`prompts/prompt_insertion.txt`) reprend la structure du prompt d'insertion fourni en TP1. Chaque élément a été analysé pour savoir s'il était pertinent pour notre base :
+
+| Élément du prompt du TP1 | Ce que nous en avons fait |
+|---|---|
+| Modèle relationnel, avec les clés primaires après chaque relation | Conservé : notre MLD complet, avec les clés primaires et les clés étrangères composées indiquées explicitement. |
+| « Les clés primaires correspondent aux id » | Adapté : nos clés sont des données métier (numéros de licence, d'affiliation, libellé de saison) ou des clés composées. Elles sont donc indiquées après chaque relation. |
+| Clés étrangères marquées par # et portant le même nom que la clé référencée | Conservé, avec l'exception des deux clés vers Club dans Match_ (domicile et extérieur). |
+| Nombre de lignes par table | Conservé et détaillé : 2 saisons, 6 clubs par saison, 16 joueurs par effectif, 60 matchs, au moins 120 buts et 120 cartons. |
+| Données imposées (les 4 maisons et leurs caractéristiques) | Conservé : les 7 clubs, leurs stades et le stade neutre sont fixés, avec leurs vraies caractéristiques. |
+| Ordre d'insertion (tables sans clé étrangère d'abord) | Conservé, avec la liste des tables dans l'ordre. |
+| Contraintes de validation copiées en SQL | Conservé : le contenu de `2_contraintes.sql` (CHECK, UNIQUE, DEFAULT), complété par les règles vérifiées par les triggers, décrites en texte. |
+| Noms et prénoms d'origines variées et mixtes | Adapté : origines variées et cohérentes avec la nationalité. La mixité est demandée pour les arbitres (au moins 2 femmes), le championnat étant masculin. Les personnes doivent être fictives. |
+| Script SQL prêt à être exécuté | Conservé et précisé : USE en tête, une requête INSERT par table avec la liste des colonnes, apostrophes doublées, pas de création ni de suppression de tables. |
+
+Nous avons ajouté au prompt des éléments propres au football, que l'IA n'aurait pas pu deviner et qui sont nécessaires au respect des contraintes :
+- un calendrier aller imposé (méthode du tournoi toutes rondes), car la règle « chaque club joue une fois par journée, et deux clubs se rencontrent exactement deux fois » est la plus difficile à respecter ;
+- l'état des matchs (saison terminée, saison en cours avec un match reporté et des matchs programmés), pour que la base serve à des requêtes réalistes ;
+- les règles des buts et cartons (joueur de l'un des deux clubs, numéros d'ordre chronologiques, penaltys et buts contre son camp) ;
+- des changements de club et d'entraîneur entre les deux saisons, pour que l'association ternaire APPARTENIR soit réellement utilisée.
+
+### 6.2 Résultat
+
+**IA utilisée :** Claude (Anthropic)
+
+Le prompt a été soumis une seule fois, dans une conversation neuve. Le script obtenu est `3_insertion.sql`. La seule modification faite par l'IA par rapport à la demande est l'ajout de `SET NAMES utf8mb4;` après `USE ligue_football;`, pour que les noms de colonnes accentués (numero_journée, prénom_entraineur…) soient correctement lus quel que soit l'encodage du client MySQL.
+
+**Exécution.** Le script s'exécute sans erreur sur la base créée par `1_creation.sql` et `2_contraintes.sql` : toutes les contraintes d'intégrité, les CHECK et les triggers sont respectés.
+
+| Table | Lignes |
+|---|---|
+| SAISON | 2 |
+| Stade | 8 |
+| Club | 7 |
+| Joueur | 111 |
+| Entraineur | 8 |
+| Arbitre | 8 |
+| Journee | 20 |
+| PARTICIPER | 12 |
+| APPARTENIR | 192 |
+| DIRIGER | 12 |
+| Match_ | 60 |
+| But | 129 |
+| Carton | 145 |
+
+**Vérification des exigences non couvertes par les contraintes.** Certaines demandes du prompt ne peuvent pas être imposées par la base. Nous les avons contrôlées par des requêtes :
+- calendrier : il respecte exactement le schéma aller imposé, les journées 6 à 10 inversent les journées 1 à 5, chaque club joue 10 matchs par saison et chaque paire de clubs se rencontre une fois chez chacun ;
+- statuts : tous les matchs de 2025-2026 sont « joué » ; en 2026-2027, les journées 1 à 4 sont « joué » sauf un match « reporté » de la journée 3, les journées 5 à 10 sont « programmé » ;
+- stades : un match par saison est délocalisé au Stade de France, les autres se jouent dans le stade du club qui reçoit ;
+- effectifs : chaque effectif compte 2 gardiens, 5 défenseurs, 5 milieux et 4 attaquants ; 12 joueurs changent de club entre les deux saisons ; parmi les 16 joueurs du Stade Rennais, 6 rejoignent un autre club et 10 sont absents en 2026-2027 ;
+- entraîneurs : 2 clubs changent d'entraîneur entre les deux saisons ;
+- arbitres : 3 femmes sur 8, chaque arbitre dirige 7 ou 8 matchs ;
+- buts : 129 buts dont 12 penaltys et 4 contre son camp, marqués surtout par des milieux (54) et des attaquants (57), un seul par un gardien ; scores entre 0-0 (4 matchs) et 6-0 ;
+- cartons : 145 cartons dont 9 rouges ; les numéros d'ordre des buts et des cartons sont consécutifs et suivent l'ordre chronologique, aucun joueur n'agit après son exclusion ;
+- joueurs : 38 nationalités, âges de 17 à 35 ans, aucun doublon de nom.
+
+**Limite relevée.** Le match reporté conserve sa date initiale (2026-10-03). La règle de gestion indique seulement qu'il reste rattaché à sa journée : la date pourra être mise à jour lorsque le match sera reprogrammé.
+
+---
+
 ## Références
 
 - Sujet : mini-projet TI503N, conçu par Lena TREBAUL (EFREI)

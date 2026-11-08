@@ -1,0 +1,229 @@
+Donne les requêtes d'insertion permettant de remplir la base de données MySQL « ligue_football » d'une organisation qui gère un championnat national de football professionnel (inspirée de la Ligue 1). Le modèle relationnel est le suivant :
+
+SAISON (libelle_saison, date_debut_saison, date_fin_saison)
+  clé primaire : libelle_saison
+Journee (#libelle_saison, numero_journée)
+  clé primaire : (libelle_saison, numero_journée)
+Stade (code_stade, nom_stade, ville_stade, capacite_stade)
+  clé primaire : code_stade
+Club (numero_affiliation, nom_club, annee_fondation, #code_stade)
+  clé primaire : numero_affiliation
+Joueur (numero_licence_joueur, nom_joueur, prenom_joueur, date_naissance_joueur, nationalite_joueur, poste_joueur)
+  clé primaire : numero_licence_joueur
+Entraineur (numero_licence_entraineur, nom_entraineur, prénom_entraineur, nationalite_entraineur)
+  clé primaire : numero_licence_entraineur
+Arbitre (numero_licence_arbitre, nom_arbitre, prenom_arbitre, categorie_arbitre)
+  clé primaire : numero_licence_arbitre
+PARTICIPER (#numero_affiliation, #libelle_saison)
+  clé primaire : (numero_affiliation, libelle_saison)
+APPARTENIR (#numero_licence_joueur, #libelle_saison, #numero_affiliation, numero_maillot)
+  clé primaire : (numero_licence_joueur, libelle_saison)
+  (numero_affiliation, libelle_saison) fait référence à PARTICIPER
+DIRIGER (#numero_affiliation, #libelle_saison, #numero_licence_entraineur)
+  clé primaire : (numero_affiliation, libelle_saison)
+  (numero_affiliation, libelle_saison) fait référence à PARTICIPER ; le couple (numero_licence_entraineur, libelle_saison) est unique
+Match_ (numero_match, date_match, heure_coup_envoi, statut_match, #libelle_saison, #numero_journée, #numero_affiliation_Domicile, #numero_affiliation_extérieur, #code_stade, #numero_licence_arbitre)
+  clé primaire : numero_match
+  (libelle_saison, numero_journée) fait référence à Journee ; numero_affiliation_Domicile (club qui reçoit) et numero_affiliation_extérieur (club qui se déplace) font référence à Club
+But (#numero_match, numero_ordre_but, minute_but, type_but, #numero_licence_joueur)
+  clé primaire : (numero_match, numero_ordre_but)
+Carton (#numero_match, numero_ordre_carton, minute_carton, couleur_carton, #numero_licence_joueur)
+  clé primaire : (numero_match, numero_ordre_carton)
+
+Les clés primaires sont indiquées après chaque relation. Les clés étrangères sont identifiées par les #, et ont le même nom que les clés primaires auxquelles elles font référence, sauf numero_affiliation_Domicile et numero_affiliation_extérieur qui font référence à numero_affiliation.
+
+Il doit y avoir :
+- 2 saisons : « 2025-2026 » (du 2025-08-15 au 2026-05-17), terminée, et « 2026-2027 » (du 2026-08-14 au 2027-05-23), en cours ;
+- 6 clubs par saison, donc 10 journées par saison (numérotées de 1 à 10) et 30 matchs par saison, soit 60 matchs au total, numérotés de 1 à 60 dans l'ordre des saisons puis des journées ;
+- 16 joueurs dans l'effectif de chaque club pour chaque saison (2 gardiens, 5 défenseurs, 5 milieux, 4 attaquants), avec des numéros de maillot différents au sein d'un club pour une saison. D'une saison à l'autre, la plupart des joueurs restent dans le même club, au moins 6 joueurs changent de club, et les joueurs du club qui ne participe plus sont soit répartis dans d'autres clubs, soit absents de la saison 2026-2027. Il y a donc environ 110 joueurs au total ;
+- 8 entraîneurs : chaque club participant a un seul entraîneur principal par saison, au moins un club change d'entraîneur entre les deux saisons ;
+- 8 arbitres, dont au moins 2 femmes, répartis entre les catégories International, Fédéral 1 et Fédéral 2 ;
+- au moins 120 buts et au moins 120 cartons, dont au moins 8 rouges.
+
+Les clubs et les stades sont au nombre de 7 et 8, dont voici les caractéristiques :
+- Paris Saint-Germain, numéro d'affiliation 100001, fondé en 1970, stade PAR001 : Parc des Princes, Paris, 47929 places
+- Olympique de Marseille, numéro d'affiliation 100002, fondé en 1899, stade MAR001 : Orange Vélodrome, Marseille, 67394 places
+- Olympique Lyonnais, numéro d'affiliation 100003, fondé en 1950, stade LYO001 : Groupama Stadium, Décines-Charpieu, 59186 places
+- LOSC Lille, numéro d'affiliation 100004, fondé en 1944, stade LIL001 : Decathlon Arena, Villeneuve-d'Ascq, 50186 places
+- AS Monaco, numéro d'affiliation 100005, fondé en 1924, stade MON001 : Stade Louis-II, Monaco, 16360 places
+- Stade Rennais, numéro d'affiliation 100006, fondé en 1901, stade REN001 : Roazhon Park, Rennes, 29778 places
+- OGC Nice, numéro d'affiliation 100007, fondé en 1904, stade NIC001 : Allianz Riviera, Nice, 36178 places
+- un stade neutre, sans club résident : SDF001 : Stade de France, Saint-Denis, 80698 places
+En 2025-2026, les clubs participants sont 100001 à 100006. En 2026-2027, le Stade Rennais (100006) ne participe plus et est remplacé par l'OGC Nice (100007).
+
+Le calendrier de chaque saison doit être un vrai championnat aller-retour : chaque club dispute exactement un match par journée, et deux clubs se rencontrent exactement deux fois par saison, une fois chez chacun. En numérotant C1 à C6 les clubs participants de la saison (dans l'ordre croissant des numéros d'affiliation), utilise ce calendrier aller (club qui reçoit en premier) :
+- journée 1 : C1-C6, C2-C5, C3-C4
+- journée 2 : C5-C1, C4-C6, C2-C3
+- journée 3 : C1-C4, C3-C5, C6-C2
+- journée 4 : C3-C1, C2-C4, C5-C6
+- journée 5 : C1-C2, C6-C3, C4-C5
+Les journées 6 à 10 reprennent les journées 1 à 5 en inversant le club qui reçoit et le club qui se déplace.
+
+Les matchs :
+- se jouent en principe dans le stade du club qui reçoit ; un match de chaque saison est délocalisé au Stade de France ;
+- ont lieu le week-end, avec une journée environ toutes les 3 à 4 semaines, à des dates comprises dans la saison, et un coup d'envoi entre 13:00 et 21:00 ;
+- en 2025-2026, sont tous « joué » ; en 2026-2027, les matchs des journées 1 à 4 sont « joué » (sauf un match de la journée 3, « reporté »), ceux des journées 5 à 10 sont « programmé » ;
+- sont arbitrés par l'ensemble des arbitres, chacun dirigeant plusieurs matchs.
+
+Les buts et les cartons :
+- ne concernent que les matchs « joué », avec des scores réalistes (entre 0 et 6 buts par match, quelques matchs nuls 0-0) ;
+- sont marqués ou reçus par un joueur qui appartient, pour la saison du match, à l'effectif de l'un des deux clubs du match ;
+- sont numérotés à partir de 1 dans chaque match (numero_ordre_but, numero_ordre_carton), dans l'ordre chronologique des minutes ;
+- les buts sont surtout marqués par des attaquants et des milieux, rarement par des gardiens ; il y a au moins 10 penaltys et au moins 4 buts contre son camp (marqués par un joueur du club adverse de celui qui en profite).
+
+Les clés étrangères doivent faire référence aux clés primaires existantes : donne les lignes en commençant par remplir les tables dans lesquelles il n'y a pas de clés étrangères (SAISON, Stade, Joueur, Entraineur, Arbitre), puis les tables dans lesquelles les clés étrangères font référence à des clés primaires des tables déjà remplies (Journee, Club, PARTICIPER, APPARTENIR, DIRIGER, Match_, But, Carton).
+
+Les numéros de licence des joueurs commencent à 1000000001, ceux des entraîneurs à 2000000001 et ceux des arbitres à 3000000001.
+
+Les données doivent respecter les contraintes de validation suivantes :
+
+
+-- SAISON
+ALTER TABLE SAISON
+    -- A. Le libellé a la forme AAAA-AAAA (ex. 2025-2026).
+    ADD CONSTRAINT ck_saison_libelle_format
+        CHECK (libelle_saison REGEXP '^[0-9]{4}-[0-9]{4}$'),
+    -- D. Les deux années du libellé sont consécutives.
+    ADD CONSTRAINT ck_saison_annees_consecutives
+        CHECK (CAST(RIGHT(libelle_saison, 4) AS UNSIGNED)
+             = CAST(LEFT(libelle_saison, 4) AS UNSIGNED) + 1),
+    -- D. La saison commence pendant la première année de son libellé.
+    ADD CONSTRAINT ck_saison_annee_debut
+        CHECK (YEAR(date_debut_saison) = CAST(LEFT(libelle_saison, 4) AS UNSIGNED)),
+    -- D. La date de fin est postérieure à la date de début.
+    ADD CONSTRAINT ck_saison_dates
+        CHECK (date_fin_saison > date_debut_saison);
+
+-- Journee
+ALTER TABLE Journee
+    -- B. Les journées sont numérotées à partir de 1. Avec au plus 20 clubs,
+    --    une saison compte au plus 2 x (20 - 1) = 38 journées.
+    ADD CONSTRAINT ck_journee_numero
+        CHECK (numero_journée BETWEEN 1 AND 38);
+
+-- Stade
+ALTER TABLE Stade
+    -- A. Le code est formé de 3 lettres majuscules et 3 chiffres (ex. PAR001).
+    ADD CONSTRAINT ck_stade_code_format
+        CHECK (REGEXP_LIKE(code_stade, '^[A-Z]{3}[0-9]{3}$', 'c')),
+    -- B. La capacité est un nombre de places positif, sur 6 chiffres au plus.
+    ADD CONSTRAINT ck_stade_capacite
+        CHECK (capacite_stade BETWEEN 1 AND 999999),
+    -- A. La ville ne contient que des lettres, espaces, tirets et apostrophes.
+    ADD CONSTRAINT ck_stade_ville_format
+        CHECK (ville_stade REGEXP '^[[:alpha:]]+([ \'-][[:alpha:]]+)*$');
+
+-- Club
+ALTER TABLE Club
+    -- B. Le numéro d'affiliation compte au plus 6 chiffres.
+    ADD CONSTRAINT ck_club_affiliation
+        CHECK (numero_affiliation BETWEEN 1 AND 999999),
+    -- B. Année de fondation plausible (le plus ancien club, Sheffield FC,
+    --    date de 1857).
+    ADD CONSTRAINT ck_club_annee_fondation
+        CHECK (annee_fondation >= 1857),
+    -- A. Le nom du club n'est pas vide.
+    ADD CONSTRAINT ck_club_nom_non_vide
+        CHECK (TRIM(nom_club) <> ''),
+    -- E. Deux clubs ne peuvent pas porter le même nom.
+    ADD CONSTRAINT uq_club_nom UNIQUE (nom_club);
+
+-- Joueur, Entraineur, Arbitre
+ALTER TABLE Joueur
+    -- B. Le numéro de licence compte exactement 10 chiffres.
+    ADD CONSTRAINT ck_joueur_licence
+        CHECK (numero_licence_joueur BETWEEN 1000000000 AND 9999999999),
+    -- A. Nom, prénom et nationalité : lettres, espaces, tirets, apostrophes.
+    ADD CONSTRAINT ck_joueur_nom_format
+        CHECK (nom_joueur REGEXP '^[[:alpha:]]+([ \'-][[:alpha:]]+)*$'),
+    ADD CONSTRAINT ck_joueur_prenom_format
+        CHECK (prenom_joueur REGEXP '^[[:alpha:]]+([ \'-][[:alpha:]]+)*$'),
+    ADD CONSTRAINT ck_joueur_nationalite_format
+        CHECK (nationalite_joueur REGEXP '^[[:alpha:]]+([ \'-][[:alpha:]]+)*$'),
+    -- C. Le poste fait partie des quatre postes du football.
+    ADD CONSTRAINT ck_joueur_poste
+        CHECK (poste_joueur IN ('gardien', 'défenseur', 'milieu', 'attaquant'));
+
+ALTER TABLE Entraineur
+    ADD CONSTRAINT ck_entraineur_licence
+        CHECK (numero_licence_entraineur BETWEEN 1000000000 AND 9999999999),
+    ADD CONSTRAINT ck_entraineur_nom_format
+        CHECK (nom_entraineur REGEXP '^[[:alpha:]]+([ \'-][[:alpha:]]+)*$'),
+    ADD CONSTRAINT ck_entraineur_prenom_format
+        CHECK (prénom_entraineur REGEXP '^[[:alpha:]]+([ \'-][[:alpha:]]+)*$'),
+    ADD CONSTRAINT ck_entraineur_nationalite_format
+        CHECK (nationalite_entraineur REGEXP '^[[:alpha:]]+([ \'-][[:alpha:]]+)*$');
+
+ALTER TABLE Arbitre
+    ADD CONSTRAINT ck_arbitre_licence
+        CHECK (numero_licence_arbitre BETWEEN 1000000000 AND 9999999999),
+    ADD CONSTRAINT ck_arbitre_nom_format
+        CHECK (nom_arbitre REGEXP '^[[:alpha:]]+([ \'-][[:alpha:]]+)*$'),
+    ADD CONSTRAINT ck_arbitre_prenom_format
+        CHECK (prenom_arbitre REGEXP '^[[:alpha:]]+([ \'-][[:alpha:]]+)*$'),
+    -- C. Catégories d'arbitres retenues.
+    ADD CONSTRAINT ck_arbitre_categorie
+        CHECK (categorie_arbitre IN ('International', 'Fédéral 1', 'Fédéral 2'));
+
+-- APPARTENIR (effectifs)
+ALTER TABLE APPARTENIR
+    -- B. Le numéro de maillot est compris entre 1 et 99.
+    ADD CONSTRAINT ck_appartenir_maillot
+        CHECK (numero_maillot BETWEEN 1 AND 99),
+    -- E. Deux joueurs d'un même club ne portent pas le même numéro
+    --    au cours d'une même saison.
+    ADD CONSTRAINT uq_appartenir_maillot
+        UNIQUE (numero_affiliation, libelle_saison, numero_maillot);
+
+-- Match_
+ALTER TABLE Match_
+    -- B. Le numéro de match compte au plus 6 chiffres.
+    ADD CONSTRAINT ck_match_numero
+        CHECK (numero_match BETWEEN 1 AND 999999),
+    -- C. Statut du match.
+    ADD CONSTRAINT ck_match_statut
+        CHECK (statut_match IN ('programmé', 'joué', 'reporté')),
+    -- B. Coup d'envoi entre 12h00 et 22h00.
+    ADD CONSTRAINT ck_match_heure
+        CHECK (heure_coup_envoi BETWEEN '12:00:00' AND '22:00:00'),
+    -- E. Au cours d'une saison, un club ne reçoit qu'une fois un même
+    --    adversaire (match aller et match retour chacun une seule fois).
+    ADD CONSTRAINT uq_match_affiche
+        UNIQUE (libelle_saison, numero_affiliation_Domicile, numero_affiliation_extérieur);
+
+-- F. Un match nouvellement créé est programmé par défaut.
+ALTER TABLE Match_
+    ALTER COLUMN statut_match SET DEFAULT 'programmé';
+
+-- But et Carton
+ALTER TABLE But
+    -- B. Numéro d'ordre à partir de 1, minute entre 1 et 130
+    --    (prolongations et temps additionnel compris).
+    ADD CONSTRAINT ck_but_ordre
+        CHECK (numero_ordre_but >= 1),
+    ADD CONSTRAINT ck_but_minute
+        CHECK (minute_but BETWEEN 1 AND 130),
+    -- C. Type de but.
+    ADD CONSTRAINT ck_but_type
+        CHECK (type_but IN ('jeu', 'penalty', 'contre son camp'));
+
+ALTER TABLE Carton
+    ADD CONSTRAINT ck_carton_ordre
+        CHECK (numero_ordre_carton >= 1),
+    ADD CONSTRAINT ck_carton_minute
+        CHECK (minute_carton BETWEEN 1 AND 130),
+    -- C. Couleur du carton.
+    ADD CONSTRAINT ck_carton_couleur
+        CHECK (couleur_carton IN ('jaune', 'rouge'));
+
+
+Les règles suivantes sont aussi vérifiées par des triggers :
+- un club a toujours un stade de résidence, un match a toujours un stade et un arbitre ;
+- le club qui reçoit et le club qui se déplace sont différents et participent tous les deux à la saison du match ;
+- la date du match est comprise entre la date de début et la date de fin de la saison ;
+- lors d'une journée, chaque club dispute un seul match ;
+- un but ou un carton ne concerne qu'un match « joué », et le joueur appartient, pour la saison du match, à l'effectif de l'un des deux clubs du match.
+
+Assure-toi que les noms et prénoms des joueurs, entraîneurs et arbitres font référence à des origines variées, cohérentes avec leur nationalité. Les personnes sont fictives : n'utilise pas les noms de joueurs, d'entraîneurs ou d'arbitres réels.
+
+Fournis l'ensemble sous la forme d'un script SQL prêt à être exécuté, qui commence par « USE ligue_football; », avec une requête INSERT INTO par table regroupant plusieurs lignes, en précisant la liste des colonnes, et un commentaire avant chaque table. Les apostrophes dans les valeurs sont doublées (ex. 'Villeneuve-d''Ascq'). Ne crée pas et ne supprime pas de tables, et ne fournis que le script, sans explication.
