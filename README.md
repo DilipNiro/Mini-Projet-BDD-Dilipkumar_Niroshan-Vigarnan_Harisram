@@ -292,9 +292,72 @@ Les attributs sont suffixés par le nom de leur entité (nom_joueur, nom_arbitre
 
 ---
 
-## 5. Partie 2 (à venir)
+## 5. Étape 3 : MLD et MPD
 
-Les étapes 3 à 6 (MLD et MPD, insertion des données, requêtes, vidéo de présentation) seront documentées ici pour le rendu du 09/11/2026.
+### 5.1 MLD
+
+Le MLD est déduit du MCD par les règles de transformation suivantes :
+- chaque entité devient une relation, son identifiant devient la clé primaire ;
+- une association binaire 1,1 – 0,N/1,N (RESIDER, PROGRAMMER, RECEVOIR, SE_DEPLACER, ACCUEILLIR, ARBITRER, MARQUER, SANCTIONNER) disparaît : la clé primaire de l'entité côté N migre comme clé étrangère dans l'entité côté 1,1 ;
+- une entité faible (JOURNEE, BUT, CARTON) reçoit la clé de son entité porteuse, qui fait partie de sa clé primaire ;
+- une association N,N (PARTICIPER) ou ternaire (APPARTENIR, DIRIGER) devient une relation dont la clé est formée des clés des entités reliées. Les CIF réduisent cette clé : pour APPARTENIR, joueur + saison détermine le club, la clé est donc (joueur, saison) ; pour DIRIGER, club + saison détermine l'entraîneur, la clé est donc (club, saison) et le couple (entraîneur, saison) est unique.
+
+Le MLD a été généré avec Looping à partir du MCD.
+
+![MLD du championnat de football](mld/mld_ligue_football.jpeg)
+
+« MATCH » étant un mot réservé en MySQL, la relation correspondante s’appelle Match_. Les deux clés étrangères vers Club sont nommées selon le rôle du club : numero_affiliation_Domicile (club qui reçoit) et numero_affiliation_extérieur (club qui se déplace).
+
+Clés primaires soulignées, clés étrangères précédées de #.
+
+- **SAISON** (<u>libelle_saison</u>, date_debut_saison, date_fin_saison)
+- **Journee** (<u>#libelle_saison, numero_journée</u>)
+- **Stade** (<u>code_stade</u>, nom_stade, ville_stade, capacite_stade)
+- **Club** (<u>numero_affiliation</u>, nom_club, annee_fondation, #code_stade)
+- **Joueur** (<u>numero_licence_joueur</u>, nom_joueur, prenom_joueur, date_naissance_joueur, nationalite_joueur, poste_joueur)
+- **Entraineur** (<u>numero_licence_entraineur</u>, nom_entraineur, prénom_entraineur, nationalite_entraineur)
+- **Arbitre** (<u>numero_licence_arbitre</u>, nom_arbitre, prenom_arbitre, categorie_arbitre)
+- **PARTICIPER** (<u>#numero_affiliation, #libelle_saison</u>)
+- **APPARTENIR** (<u>#numero_licence_joueur, #libelle_saison</u>, #numero_affiliation, numero_maillot)
+- **DIRIGER** (<u>#numero_affiliation, #libelle_saison</u>, #numero_licence_entraineur)
+- **Match_** (<u>numero_match</u>, date_match, heure_coup_envoi, statut_match, #libelle_saison, #numero_journée, #numero_affiliation_Domicile, #numero_affiliation_extérieur, #code_stade, #numero_licence_arbitre)
+- **But** (<u>#numero_match, numero_ordre_but</u>, minute_but, type_but, #numero_licence_joueur)
+- **Carton** (<u>#numero_match, numero_ordre_carton</u>, minute_carton, couleur_carton, #numero_licence_joueur)
+
+Références des clés étrangères composées :
+- Match_ (libelle_saison, numero_journée) → Journee ;
+- APPARTENIR (numero_affiliation, libelle_saison) → PARTICIPER ;
+- DIRIGER (numero_affiliation, libelle_saison) → PARTICIPER.
+
+Les deux dernières références remplacent les clés étrangères séparées vers Club et SAISON : elles imposent en plus qu'un club n'ait un effectif ou un entraîneur que pour une saison à laquelle il participe (contrainte 5 de la section 4.5).
+
+**Troisième forme normale.** Chaque relation est en 1FN (attributs atomiques). Les relations à clé composée (Journee, PARTICIPER, APPARTENIR, DIRIGER, But, Carton) sont en 2FN : numero_maillot et numero_affiliation dépendent du couple (joueur, saison) entier, minute_but et type_but du couple (match, numéro d'ordre) entier. Elles sont en 3FN car aucun attribut non clé ne dépend d'un autre attribut non clé : par exemple, dans Match_, le stade n'est pas déduit du club qui reçoit (match délocalisé possible) et la saison n'est pas déduite de la date (match reporté).
+
+### 5.2 MPD
+
+Le MPD est écrit pour MySQL (version 8.0.16 ou plus récente) dans deux fichiers :
+- `1_creation.sql` : création de la base et des tables, avec les contraintes d'intégrité (clés primaires, clés étrangères, NOT NULL, UNIQUE des CIF) ;
+- `2_contraintes.sql` : contraintes de validation issues des règles de gestion.
+
+**Modification et suppression des lignes référencées.** Toutes les clés étrangères ont une action ON UPDATE CASCADE : changer un identifiant (numéro d'affiliation, libellé de saison...) le met à jour partout. Pour la suppression :
+- ON DELETE CASCADE lorsque la ligne fille n'a pas de sens sans la ligne mère (une journée sans sa saison, un but sans son match, l'effectif d'un club supprimé) ;
+- ON DELETE SET NULL pour le stade d'un club, le stade d'un match et l'arbitre d'un match : supprimer un stade ou un arbitre ne doit pas effacer les clubs et les matchs. Ces colonnes sont donc nullables, mais un trigger impose une valeur à l'insertion et à la modification, ce qui respecte la cardinalité 1,1 du MCD.
+
+**Contraintes de validation** (`2_contraintes.sql`) :
+
+| Type | Exemples |
+|---|---|
+| Format (expression régulière) | libellé de saison AAAA-AAAA, code de stade (3 lettres + 3 chiffres), noms sans chiffres |
+| Plage de valeurs | numéro de maillot entre 1 et 99, minute entre 1 et 130, licence sur 10 chiffres, coup d'envoi entre 12h et 22h |
+| Liste de valeurs | poste, statut du match, type de but, couleur du carton, catégorie d'arbitre |
+| Comparaison entre colonnes | fin de saison après le début, années du libellé consécutives |
+| Unicité métier | numéro de maillot unique par club et par saison, un seul match aller et un seul match retour entre deux clubs, nom de club unique |
+| Valeur par défaut | un match est « programmé » à sa création |
+| Règles sur plusieurs tables (triggers) | clubs d'un match différents et participant à la saison, un seul match par club et par journée, date du match dans la saison, buteur ou joueur sanctionné membre de l'un des deux clubs, but ou carton uniquement pour un match joué |
+
+En MySQL, une colonne vérifiée par un CHECK ne peut pas porter une clé étrangère avec action CASCADE ou SET NULL. Les règles portant sur des colonnes clés étrangères sont donc vérifiées par des triggers.
+
+Deux règles ne sont pas vérifiées automatiquement, car elles ne peuvent être évaluées qu'une fois les données d'une saison complètes : « deux clubs se rencontrent exactement deux fois » (la base garantit seulement « au plus une fois dans chaque sens ») et « chaque club participant a un entraîneur principal ».
 
 ---
 
